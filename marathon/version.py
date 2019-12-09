@@ -1,0 +1,7 @@
+title = 'run-marathon'
+description = 'Manage and simplify your Cloud Run deployments'
+url = 'https://github.com/adrianchifor/run-marathon'
+version = '0.1.0'
+author = 'Adrian Chifor'
+author_email = 'me@adrianchifor.com'
+license = 'Apache License 2.0'
