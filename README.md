@@ -3,12 +3,11 @@ Manage and simplify your Cloud Run deployments.
 
 Work in progress.
 
+Not affiliated with https://mesosphere.github.io/marathon/.
+
 Test:
 ```
 cd example
-# Replace the placeholder project and region
-sed -i 's/your_project/<project>/g' run.yaml
-sed -i 's/your_default_region/<region>/g' run.yaml
 # Build and deploy
 run marathon --build  # TODO: implement deploy
 # Check running containers
@@ -42,6 +41,9 @@ service1:
 ```
 
 TODO:
+- Invoke function
 - Only deploy if container image or config changes (persist + check combo hash)
 - Support domain mappings
 - Cleanup unused IAM service accounts and bindings
+- Support pubsub
+- Support cron

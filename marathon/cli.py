@@ -88,7 +88,21 @@ def run_init():
         log.info("run.yaml already exists, skipping init")
         return
 
+    log.info("An example run.yaml will be created in the current directory.")
+    log.info("Please enter a project and default region where you want to deploy the Cloud Run services.\n")
+    try:
+        project = input("Google Cloud project: ")
+        region = input("Google Cloud default region: ")
+    except KeyboardInterrupt:
+        log.info("\nStopping init ...")
+        sys.exit(1)
+
     run_yaml = init_marathon_config()
+    if project:
+        run_yaml["project"] = project
+    if region:
+        run_yaml["region"] = region
+
     with open("run.yaml", "w") as f:
         yaml.dump(run_yaml, stream=f)
         log.info("Created example run.yaml")
