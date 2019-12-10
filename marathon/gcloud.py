@@ -41,6 +41,13 @@ def build(service, dir, image):
     eval_noout(f"gcloud builds submit --tag={image} {dir} --project={project}")
 
 
+def deploy(service):
+    project = get_marathon_config()["project"]
+    default_region = get_marathon_config()["region"]
+    service_conf = get_marathon_config()[service]
+    # TODO: deploy
+
+
 def eval_stdout(command):
     command = command.split(" ")
     try:

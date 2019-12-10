@@ -21,13 +21,13 @@ region: default region where we deploy  # required
 
 service1:
   image: gcr.io/${project}/service1:latest  # required, yes you can interpolate first-level variables :)
-  dir: apps/service1            # only needed when using --build in 'run marathon'
-  authenticated: true           # optional, default true (private)
-  region: your_region           # optional, defaults to the region specified at first-level
-  concurrency: 30               # optional, default 80
-  max-instances: 1000           # optional, default quota is 1000
-  memory: 512Mi                 # optional, default 256Mi max 2Gi
-  timeout: 30                   # optional, default 300 (5min)
+  dir: apps/service1   # only needed when using --build in 'run marathon'
+  authenticated: true  # optional, default true (private)
+  region: your_region  # optional, defaults to the region specified at first-level
+  concurrency: 30      # optional, default 80
+  max-instances: 1000  # optional, default quota is 1000
+  memory: 512Mi        # optional, default 256Mi max 2Gi
+  timeout: 30          # optional, default 300 (5min)
   env:
     KEY: VALUE
   labels:
@@ -35,9 +35,9 @@ service1:
   cloudsql-instances:
     - your_cloudsql_instance
   iam_roles:
-    - roles/compute.viewer      # these get attached to the service account of the service
+    - roles/compute.viewer  # these get attached to the service account of the service
   links:
-    - service2                  # allowed to invoke service2 through IAM, also injects SERVICE2_URL env into the container
+    - service2              # allowed to invoke service2 through IAM, also injects SERVICE2_URL env into the container
 ```
 
 TODO:

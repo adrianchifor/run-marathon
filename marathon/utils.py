@@ -67,4 +67,14 @@ def service_iter():
             yield service
 
 
-# def deploy_order(conf):
+def service_dependencies():
+    deps_map = {}
+    nodeps_list = []
+    conf = get_marathon_config()
+    for service in service_iter():
+        if "links" in conf[service] and len(conf[service]["links"]) > 0:
+            deps_map[service] = set(conf[service]["links"])
+        else:
+            nodeps_list.append(service)
+
+    return deps_map, nodeps_list
