@@ -9,7 +9,7 @@ Test:
 ```
 cd example
 # Build and deploy
-run marathon --build  # TODO: implement deploy
+run deploy --build  # TODO: implement deploy
 # Check running containers
 run ls
 ```

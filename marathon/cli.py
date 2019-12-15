@@ -38,8 +38,8 @@ def main():
 
 
 def handle_command(command, args):
-    if command == "marathon":
-        run_marathon(args)
+    if command == "deploy":
+        run_deploy(args)
 
     elif command == "init":
         run_init()
@@ -51,7 +51,7 @@ def handle_command(command, args):
         gcloud.describe(args.service, args.region)
 
 
-def run_marathon(args):
+def run_deploy(args):
     try:
         conf = get_marathon_config()
     except Exception as e:

@@ -10,8 +10,8 @@ def init_cli_parser():
     parser.add_argument("--version", action="version", version=version)
     subparser = parser.add_subparsers(help="commands")
 
-    marathon_parser = subparser.add_parser("marathon", help="Deploy services to Cloud Run and setup IAM")
-    marathon_parser.add_argument("--build", "-b", help="Also build containers using Cloud Build",
+    deploy_parser = subparser.add_parser("deploy", help="Deploy services to Cloud Run and setup IAM")
+    deploy_parser.add_argument("--build", "-b", help="Also build containers using Cloud Build",
                                  action="store_true",
                                  default=False)
 
@@ -26,7 +26,7 @@ def init_cli_parser():
     describe_parser.add_argument("--region", "-r", type=str, help="Region of the Cloud Run service",
                                  default="")
 
-    add_verbose_quiet_flags([marathon_parser, init_parser, list_parser, describe_parser])
+    add_verbose_quiet_flags([deploy_parser, init_parser, list_parser, describe_parser])
 
     return parser
 

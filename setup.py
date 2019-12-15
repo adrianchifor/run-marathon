@@ -54,6 +54,7 @@ setup(
     entry_points={
         'console_scripts': [
             'run=marathon.cli:main',
+            'run-marathon=marathon.cli:main',
         ],
     },
 )
