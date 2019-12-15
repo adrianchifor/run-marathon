@@ -21,8 +21,8 @@ region: default region where we deploy  # required
 
 service1:
   image: gcr.io/${project}/service1:latest  # required, yes you can interpolate first-level variables :)
-  dir: apps/service1   # only needed when using --build in 'run marathon'
-  authenticated: true  # optional, default true (private)
+  dir: apps/service1   # only needed when using --build in 'run deploy'
+  authenticated: true  # optional, default true, set to false to make the service public
   region: your_region  # optional, defaults to the region specified at first-level
   concurrency: 30      # optional, default 80
   max-instances: 1000  # optional, default quota is 1000
