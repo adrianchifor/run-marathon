@@ -23,6 +23,9 @@ def init_marathon_config():
     return {
         "project": "your_project",
         "region": "your_default_region",
+        "allow_invoke": [
+            "user:your_user@domain.com"
+        ],
 
         "service1": {
             "image": "gcr.io/${project}/service1:latest",

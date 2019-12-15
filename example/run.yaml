@@ -1,5 +1,8 @@
 project: your_project
 region: your_default_region
+allow_invoke:
+  - user:your_user@domain.com
+  - group:your_group@domain.com
 
 service1:
   authenticated: 'false'

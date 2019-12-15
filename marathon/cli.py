@@ -136,6 +136,10 @@ def run_init():
     if region:
         run_yaml["region"] = region
 
+    user = gcloud.get_user_email().strip()
+    if user:
+        run_yaml["allow_invoke"][0] = f"user:{user}"
+
     with open("run.yaml", "w") as f:
         yaml.dump(run_yaml, stream=f)
         log.info("Created example run.yaml")

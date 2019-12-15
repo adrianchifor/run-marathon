@@ -9,6 +9,15 @@ from marathon.utils import get_marathon_config
 log = logging.getLogger(__name__)
 
 
+def get_user_email():
+    user = None
+    try:
+        user, _ = eval_noout("gcloud config get-value account")
+    except Exception:
+        pass
+    return user
+
+
 def list():
     try:
         project = get_marathon_config()["project"]

@@ -18,6 +18,9 @@ run.yaml config:
 ```
 project: Google Cloud project           # required
 region: default region where we deploy  # required
+allow_invoke:                           # optional, users allowed to `run invoke <service>`
+  - user:your_user@domain.com
+  - group:your_group@domain.com
 
 service1:
   image: gcr.io/${project}/service1:latest  # required, yes you can interpolate first-level variables :)
