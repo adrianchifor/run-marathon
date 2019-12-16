@@ -41,6 +41,9 @@ def handle_command(command, args):
     if command == "deploy":
         run_deploy(args)
 
+    elif command == "build":
+        run_build(args)
+
     elif command == "init":
         run_init()
 
@@ -50,70 +53,101 @@ def handle_command(command, args):
     elif command == "describe" or command == "desc":
         gcloud.describe(args.service, args.region)
 
+    elif command == "invoke":
+        gcloud.invoke(args)
+
 
 def run_deploy(args):
     try:
         conf = get_marathon_config()
+        project = conf["project"]
     except Exception as e:
         log.error(e)
         log.info("You can create an example run.yaml with 'run init'")
         sys.exit(1)
 
-    services_deps_order, services_nodeps = service_dependencies()
+    log.info(f"Deployment status: https://console.cloud.google.com/run?project={project}")
+
+    if args.service != "all":
+        gcloud.deploy(args.service)
+    else:
+        services_deps_order, services_nodeps = service_dependencies()
+        try:
+            services_deps_order = toposort_flatten(services_deps_order)
+        except CircularDependencyError as e:
+            log.error(e)
+            log.error("Deployment failed: Double check the service links in run.yaml")
+            sys.exit(1)
+
+        services_deploy_parallel = list(set(services_nodeps) - set(services_deps_order))
+        deploy_threads = []
+        for service in services_deploy_parallel:
+            t = Thread(target=gcloud.deploy, args=(service,False))
+            deploy_threads.append(t)
+            log.info(f"Deploying {service} in parallel ...")
+
+        for t in deploy_threads:
+            t.start()
+
+        for service in services_deps_order:
+            success = gcloud.deploy(service)
+            if not success:
+                log.error(f"{service} has dependants, waiting for other deployments to finish and aborting ...")
+                for t in deploy_threads:
+                    t.join()
+                log.error("Deployments aborted\n")
+                sys.exit(1)
+
+        log.info("Waiting for deployments to finish ...")
+
+        for t in deploy_threads:
+            t.join()
+
+    log.info("\nDeployments finished\n")
+
+
+def run_build(args):
     try:
-        services_deps_order = toposort_flatten(services_deps_order)
-    except CircularDependencyError as e:
+        conf = get_marathon_config()
+        project = conf["project"]
+    except Exception as e:
         log.error(e)
-        log.error("Double check the service links in run.yaml")
+        log.info("You can create an example run.yaml with 'run init'")
         sys.exit(1)
 
-    # Build containers in parallel if --build is specified
-    if args.build:
+    log.info(("Build logs: https://console.cloud.google.com/cloud-build/"
+        f"builds?project={project}"))
+
+    if args.service != "all":
+        log.info(f"Building {args.service} ...")
+        gcloud.build(args.service)
+    else:
+        images_built = []
         build_threads = []
         for service in service_iter():
             try:
-                dir = interpolate_var(conf[service]["dir"])
                 image = interpolate_var(conf[service]["image"])
-                t = Thread(target=gcloud.build, args=(service, dir, image))
-                build_threads.append(t)
-                log.info(f"Building {service}")
-            except KeyError:
-                log.error(f"Failed to build {service}: 'dir' and 'image' are required in run.yaml")
+                if image in images_built:
+                    log.info(f"Skipping {service}: Image already built in another service")
+                    continue
+                images_built.append(image)
+            except Exception:
+                log.error(f"Failed to build {service}: 'image' is required in run.yaml")
+                continue
+
+            t = Thread(target=gcloud.build, args=(service,))
+            build_threads.append(t)
+            log.info(f"Building {service} ...")
 
         for t in build_threads:
             t.start()
 
-        log.info(("Build logs: https://console.cloud.google.com/cloud-build/"
-            f"builds?project={conf['project']}"))
         log.info("Waiting for builds to finish ...")
 
         for t in build_threads:
             t.join()
 
-        log.info("Builds finished\n")
-
-    services_deploy_parallel = list(set(services_nodeps) - set(services_deps_order))
-    deploy_threads = []
-    for service in services_deploy_parallel:
-        t = Thread(target=gcloud.deploy, args=(service,))
-        deploy_threads.append(t)
-        log.info(f"Deploying {service} ...")
-
-    for t in deploy_threads:
-        t.start()
-
-    log.info(f"Deployment status: https://console.cloud.google.com/run?project={conf['project']}")
-
-    for service in services_deps_order:
-        log.info(f"Deploying {service} ...")
-        gcloud.deploy(service)
-
-    log.info("Waiting for deployments to finish ...")
-
-    for t in deploy_threads:
-        t.join()
-
-    log.info("Deployments finished\n")
+    log.info("\nBuilds finished\n")
 
 
 def run_init():

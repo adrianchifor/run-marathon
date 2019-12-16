@@ -11,9 +11,12 @@ def init_cli_parser():
     subparser = parser.add_subparsers(help="commands")
 
     deploy_parser = subparser.add_parser("deploy", help="Deploy services to Cloud Run and setup IAM")
-    deploy_parser.add_argument("--build", "-b", help="Also build containers using Cloud Build",
-                                 action="store_true",
-                                 default=False)
+    deploy_parser.add_argument("service", type=str, metavar="SERVICE", nargs="?",
+                              help="Service to deploy, default is all", default="all")
+
+    build_parser = subparser.add_parser("build", help="Build containers using Cloud Build")
+    build_parser.add_argument("service", type=str, metavar="SERVICE", nargs="?",
+                              help="Service to build, default is all", default="all")
 
     init_parser = subparser.add_parser("init", help="Create an example run.yaml")
 
@@ -21,12 +24,18 @@ def init_cli_parser():
 
     describe_parser = subparser.add_parser("describe", aliases=["desc"],
                                            help="Describe Cloud Run service")
-    describe_parser.add_argument("service", type=str, metavar="SERVICE",
-                                 help="Name of the Cloud Run service")
-    describe_parser.add_argument("--region", "-r", type=str, help="Region of the Cloud Run service",
-                                 default="")
+    describe_parser.add_argument("service", type=str, metavar="SERVICE", help="Service name")
+    describe_parser.add_argument("--region", "-r", type=str, help="Service region", default="")
 
-    add_verbose_quiet_flags([deploy_parser, init_parser, list_parser, describe_parser])
+    invoke_parser = subparser.add_parser("invoke", help="Invoke Cloud Run service")
+    invoke_parser.add_argument("service", type=str, metavar="SERVICE", help="Service name")
+    invoke_parser.add_argument("--path", "-p", type=str, help="Request path, default is /", default="/")
+    invoke_parser.add_argument("--request", "-X", type=str, help="Request method, default is GET", default="GET")
+    invoke_parser.add_argument("--data", "-d", type=str, help="Request json data, default is \"\"", default="")
+    invoke_parser.add_argument("--region", "-r", type=str, help="Service region", default="")
+
+    add_verbose_quiet_flags([deploy_parser, build_parser, init_parser, list_parser, describe_parser,
+        invoke_parser])
 
     return parser
 

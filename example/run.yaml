@@ -8,6 +8,7 @@ service1:
   authenticated: 'false'
   dir: apps/service1
   image: gcr.io/${project}/service1:latest
+  concurrency: 30
   links:
   - service2
 

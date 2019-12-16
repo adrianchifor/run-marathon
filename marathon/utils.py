@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
 import re
 import logging
 import yaml
@@ -8,6 +7,7 @@ import yaml
 import marathon.cached as cached
 
 log = logging.getLogger(__name__)
+
 VAR_REGEX = re.compile("\${(.*?)}")
 
 
@@ -31,6 +31,7 @@ def init_marathon_config():
             "image": "gcr.io/${project}/service1:latest",
             "dir": "apps/service1",
             "authenticated": "false",
+            "concurrency": "30",
             "links": [
                 "service2"
             ],
@@ -52,21 +53,20 @@ def init_marathon_config():
 
 
 def interpolate_var(string):
-    interpolated_string = string
-    for match in set(re.findall(VAR_REGEX, string)):
+    interpolated_string = str(string)
+    for match in set(re.findall(VAR_REGEX, str(string))):
         try:
             match_interpolation = get_marathon_config()[match]
             interpolated_string = string.replace("${{{}}}".format(match), match_interpolation)
         except KeyError:
             log.error(f"Failed to interpolate {string} in run.yaml")
-            sys.exit(1)
 
     return interpolated_string
 
 
 def service_iter():
     for service in get_marathon_config().keys():
-        if service != "project" and service != "region":
+        if service != "project" and service != "region" and service != "allow_invoke":
             yield service
 
 
@@ -81,3 +81,7 @@ def service_dependencies():
             nodeps_list.append(service)
 
     return deps_map, nodeps_list
+
+
+def sanitize_service_name(service):
+    return service.lower().replace("_", "-")
