@@ -47,6 +47,9 @@ def handle_command(command, args):
     elif command == "init":
         run_init()
 
+    elif command == "check":
+        gcloud.check()
+
     elif command == "list" or command == "ls":
         gcloud.list()
 
@@ -69,6 +72,7 @@ def run_deploy(args):
     log.info(f"Deployment status: https://console.cloud.google.com/run?project={project}")
 
     if args.service != "all":
+        log.info(f"Deploying {args.service} ...")
         gcloud.deploy(args.service)
     else:
         services_deps_order, services_nodeps = service_dependencies()
@@ -82,26 +86,34 @@ def run_deploy(args):
         services_deploy_parallel = list(set(services_nodeps) - set(services_deps_order))
         deploy_threads = []
         for service in services_deploy_parallel:
-            t = Thread(target=gcloud.deploy, args=(service,False))
+            t = Thread(target=gcloud.deploy, args=(service,))
             deploy_threads.append(t)
-            log.info(f"Deploying {service} in parallel ...")
+            log.info(f"Deploying {service} ...")
 
         for t in deploy_threads:
             t.start()
 
         for service in services_deps_order:
+            log.info(f"Deploying {service} ...")
             success = gcloud.deploy(service)
             if not success:
-                log.error(f"{service} has dependants, waiting for other deployments to finish and aborting ...")
-                for t in deploy_threads:
-                    t.join()
-                log.error("Deployments aborted\n")
+                log.error(f"{service} has dependants, canceling after other deployments finish ...")
+                try:
+                    for t in deploy_threads:
+                        t.join()
+                except KeyboardInterrupt:
+                    pass
+                log.error("\nDeployments cancelled\n")
                 sys.exit(1)
 
         log.info("Waiting for deployments to finish ...")
 
-        for t in deploy_threads:
-            t.join()
+        try:
+            for t in deploy_threads:
+                t.join()
+        except KeyboardInterrupt:
+            log.error("\nDeployments cancelled\n")
+            sys.exit(1)
 
     log.info("\nDeployments finished\n")
 
@@ -125,15 +137,18 @@ def run_build(args):
         images_built = []
         build_threads = []
         for service in service_iter():
-            try:
-                image = interpolate_var(conf[service]["image"])
-                if image in images_built:
-                    log.info(f"Skipping {service}: Image already built in another service")
-                    continue
-                images_built.append(image)
-            except Exception:
+            if "dir" not in conf[service]:
+                log.info(f"Skipping {service}: No 'dir' specified in run.yaml")
+                continue
+            if "image" not in conf[service]:
                 log.error(f"Failed to build {service}: 'image' is required in run.yaml")
                 continue
+
+            image = interpolate_var(conf[service]["image"])
+            if image in images_built:
+                log.info(f"Skipping {service}: Image already built in another service")
+                continue
+            images_built.append(image)
 
             t = Thread(target=gcloud.build, args=(service,))
             build_threads.append(t)
@@ -144,8 +159,12 @@ def run_build(args):
 
         log.info("Waiting for builds to finish ...")
 
-        for t in build_threads:
-            t.join()
+        try:
+            for t in build_threads:
+                t.join()
+        except KeyboardInterrupt:
+            log.error("\nBuilds cancelled\n")
+            sys.exit(1)
 
     log.info("\nBuilds finished\n")
 
@@ -156,7 +175,7 @@ def run_init():
         return
 
     log.info("An example run.yaml will be created in the current directory.")
-    log.info("Please enter a project and default region where you want to deploy the Cloud Run services.\n")
+    log.info("Enter a project and default region where you want to deploy the Cloud Run services.\n")
     try:
         project = input("Google Cloud project: ")
         region = input("Google Cloud default region: ")

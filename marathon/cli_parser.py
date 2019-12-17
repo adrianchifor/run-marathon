@@ -20,6 +20,8 @@ def init_cli_parser():
 
     init_parser = subparser.add_parser("init", help="Create an example run.yaml")
 
+    check_parser = subparser.add_parser("check", help="Check that required gcloud services are enabled")
+
     list_parser = subparser.add_parser("list", aliases=["ls"], help="List Cloud Run services")
 
     describe_parser = subparser.add_parser("describe", aliases=["desc"],
@@ -34,8 +36,8 @@ def init_cli_parser():
     invoke_parser.add_argument("--data", "-d", type=str, help="Request json data, default is \"\"", default="")
     invoke_parser.add_argument("--region", "-r", type=str, help="Service region", default="")
 
-    add_verbose_quiet_flags([deploy_parser, build_parser, init_parser, list_parser, describe_parser,
-        invoke_parser])
+    add_verbose_quiet_flags([deploy_parser, build_parser, init_parser, check_parser, list_parser,
+        describe_parser, invoke_parser])
 
     return parser
 

@@ -22,33 +22,79 @@ def get_user_email():
 
 def build(service):
     conf = get_marathon_config()
-    try:
-        project = conf["project"]
-        dir = interpolate_var(conf[service]["dir"])
-        image = interpolate_var(conf[service]["image"])
-        eval_noout(f"gcloud builds submit --tag={image} {dir} --project={project}")
-    except KeyError:
+    if "project" not in conf or "dir" not in conf[service] or "image" not in conf[service]:
         log.error((f"Failed to build {service}: 'project', '{service}.dir' and '{service}.image'"
             " are required in run.yaml"))
+        return
+
+    dir = interpolate_var(conf[service]["dir"])
+    image = interpolate_var(conf[service]["image"])
+    eval_noout(f"gcloud builds submit --tag={image} {dir} --project={conf['project']}")
 
 
-def deploy(service, stdout=True):
+def deploy(service):
     conf = get_marathon_config()
-    try:
-        project = conf["project"]
-        region = interpolate_var(conf.get("region", conf["region"]))
-        image = interpolate_var(conf[service]["image"])
-    except KeyError:
+    if "project" not in conf or "region" not in conf or "image" not in conf[service]:
         log.error(f"Failed to deploy {service}: 'project', 'region' and '{service}.image' are required in run.yaml")
         return False
 
+    project = conf["project"]
+    region = interpolate_var(conf.get("region", conf["region"]))
+    image = interpolate_var(conf[service]["image"])
+
     service_account = setup_service_iam(service, project, region)
+    sanitized_service = sanitize_service_name(service)
 
     log.debug(f"Deploying {service} with configuration: {conf[service]}")
 
-    sanitized_service = sanitize_service_name(service)
     deploy_cmd = (f"gcloud run deploy {sanitized_service} --image={image} --platform=managed"
         f" --region={region} --project={project} --service-account={service_account}")
+    deploy_cmd += complete_deploy_cmd(service, project, region)
+
+    eval_noout(deploy_cmd)
+
+    allow_invoke(service, project, region)
+
+    deployed_url = get_service_endpoint(sanitized_service, project, region)
+    log.info(f"[{service}]: {deployed_url}")
+
+    return True
+
+
+def setup_service_iam(service, project, region):
+    conf = get_marathon_config()
+    sanitized_service = sanitize_service_name(service)
+    service_account_name = f"{sanitized_service}-sa"
+    service_account_email = f"{service_account_name}@{project}.iam.gserviceaccount.com"
+
+    sa_list_json, _ = eval_noout(("gcloud iam service-accounts list --format=json"
+        f" --project={project} --filter=email:{service_account_email}"))
+    sa_list = json.loads(sa_list_json)
+    if len(sa_list) == 0:
+        log.debug(f"Creating service account for {service} ...")
+        eval_stdout(f"gcloud iam service-accounts create {service_account_name} --project={project}")
+
+    if "iam_roles" in conf[service]:
+        for role in conf[service]["iam_roles"]:
+            log.debug(f"Adding {role} to {service} service account ...")
+            eval_noout((f"gcloud projects add-iam-policy-binding {project}"
+                f" --member=serviceAccount:{service_account_email} --role={role}"
+                f" --project={project}"))
+
+    if "links" in conf[service]:
+        for linked_service in conf[service]["links"]:
+            log.debug(f"Allowing {service} -> {linked_service} invocation ...")
+            linked_service_sanitized = sanitize_service_name(linked_service)
+            eval_noout((f"gcloud run services add-iam-policy-binding {linked_service_sanitized}"
+                f" --member=serviceAccount:{service_account_email} --role=roles/run.invoker"
+                f" --platform=managed --project={project} --region={region}"))
+
+    return service_account_email
+
+
+def complete_deploy_cmd(service, project, region):
+    conf = get_marathon_config()
+    deploy_cmd = ""
 
     authenticated = True
     if "authenticated" in conf[service]:
@@ -112,45 +158,7 @@ def deploy(service, stdout=True):
         if len(cloudsql_instances) > 0:
             deploy_cmd += f" --set-cloudsql-instances={cloudsql_instances}"
 
-    if stdout:
-        eval_stdout(deploy_cmd)
-    else:
-        eval_noout(deploy_cmd)
-
-    allow_invoke(service, project, region)
-
-    return True
-
-
-def setup_service_iam(service, project, region):
-    conf = get_marathon_config()
-    sanitized_service = sanitize_service_name(service)
-    service_account_name = f"{sanitized_service}-sa"
-    service_account_email = f"{service_account_name}@{project}.iam.gserviceaccount.com"
-
-    sa_list_json, _ = eval_noout(("gcloud iam service-accounts list --format=json"
-        f" --project={project} --filter=email:{service_account_email}"))
-    sa_list = json.loads(sa_list_json)
-    if len(sa_list) == 0:
-        log.debug(f"Creating service account for {service} ...")
-        eval_stdout(f"gcloud iam service-accounts create {service_account_name} --project={project}")
-
-    if "iam_roles" in conf[service]:
-        for role in conf[service]["iam_roles"]:
-            log.debug(f"Adding {role} to {service} service account ...")
-            eval_noout((f"gcloud projects add-iam-policy-binding {project}"
-                f" --member=serviceAccount:{service_account_email} --role={role}"
-                f" --project={project}"))
-
-    if "links" in conf[service]:
-        for linked_service in conf[service]["links"]:
-            log.debug(f"Allowing {service} -> {linked_service} invocation ...")
-            linked_service_sanitized = sanitize_service_name(linked_service)
-            eval_noout((f"gcloud run services add-iam-policy-binding {linked_service_sanitized}"
-                f" --member=serviceAccount:{service_account_email} --role=roles/run.invoker"
-                f" --platform=managed --project={project} --region={region}"))
-
-    return service_account_email
+    return deploy_cmd
 
 
 def allow_invoke(service, project, region):
@@ -163,6 +171,44 @@ def allow_invoke(service, project, region):
             eval_noout((f"gcloud run services add-iam-policy-binding {sanitized_service}"
                 f" --member={member} --role=roles/run.invoker"
                 f" --platform=managed --project={project} --region={region}"))
+
+
+def check():
+    cmd = "gcloud services list --format=json"
+    project = ""
+    try:
+        project = get_marathon_config()["project"]
+        cmd += f" --project={project}"
+    except Exception:
+        log.debug("Could not get project from run.yaml, using gcloud default")
+
+    result_json, _ = eval_noout(cmd)
+    enabled_svc = [ svc["config"]["name"] for svc in json.loads(result_json) ]
+
+    all_enabled = True
+    if "run.googleapis.com" not in enabled_svc:
+        all_enabled = False
+        log.info(("Cloud Run API is not enabled. Enable it"
+            f" at: https://console.cloud.google.com/apis/library/run.googleapis.com?project={project}"))
+    if "cloudbuild.googleapis.com" not in enabled_svc:
+        all_enabled = False
+        log.info(("Cloud Build API is not enabled. If you want to use 'run build' enable it"
+            f" at: https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project={project}"))
+    if "containerregistry.googleapis.com" not in enabled_svc:
+        all_enabled = False
+        log.info(("Cloud Container Registry API is not enabled. If you want to use 'run build' enable it"
+            f" at: https://console.cloud.google.com/apis/library/containerregistry.googleapis.com?project={project}"))
+    if "pubsub.googleapis.com" not in enabled_svc:
+        all_enabled = False
+        log.info(("Cloud PubSub API is not enabled. If you use PubSub in your services enable it"
+            f" at: https://console.cloud.google.com/apis/library/pubsub.googleapis.com?project={project}"))
+    if "cloudscheduler.googleapis.com" not in enabled_svc:
+        all_enabled = False
+        log.info(("Cloud Scheduler API is not enabled. If you trigger services on a cron schedule enable it"
+            f" at: https://console.cloud.google.com/apis/library/cloudscheduler.googleapis.com?project={project}"))
+
+    if all_enabled:
+        log.info("Cloud Run, Build, Container Registry, PubSub and Scheduler APIs are enabled. All good!")
 
 
 def list():
@@ -179,7 +225,7 @@ def describe(service, region):
         try:
             region = get_marathon_config()["region"]
         except Exception:
-            log.error(("Please specify a region, either in run.yaml or in "
+            log.error(("Specify a region, either in run.yaml or in "
                 "'run describe <service> --region=<region>'"))
             sys.exit(1)
 
@@ -200,7 +246,7 @@ def invoke(args):
         try:
             region = get_marathon_config()["region"]
         except Exception:
-            log.error(("Please specify a region, either in run.yaml or in "
+            log.error(("Specify a region, either in run.yaml or in "
                 "'run invoke <service> --region=<region>'"))
             sys.exit(1)
 
@@ -277,5 +323,5 @@ def eval_noout(command):
 
 
 def gcloud_not_installed():
-    log.error("gcloud not installed, please check https://cloud.google.com/sdk/install")
+    log.error("gcloud not installed, check https://cloud.google.com/sdk/install")
     sys.exit(1)
