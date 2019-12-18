@@ -56,7 +56,8 @@ def deploy(service):
     allow_invoke(service, project, region)
 
     deployed_url = get_service_endpoint(sanitized_service, project, region)
-    log.info(f"[{service}]: {deployed_url}")
+    if deployed_url:
+        log.info(f"[{service}]: {deployed_url}")
 
     return True
 
@@ -264,16 +265,17 @@ def invoke(args):
         sys.exit(1)
 
     service_url = get_service_endpoint(sanitized_service, project, region)
-    auth_header = { "Authorization": f"Bearer {token.strip()}" }
+    if service_url:
+        auth_header = { "Authorization": f"Bearer {token.strip()}" }
 
-    try:
-        conn = http.HTTPSConnection(service_url.replace("https://", ""), 443)
-        conn.request(args.request, args.path, args.data, auth_header)
-        log.info(conn.getresponse().read().decode())
-        conn.close()
-    except Exception as e:
-        log.error(e)
-        sys.exit(1)
+        try:
+            conn = http.HTTPSConnection(service_url.replace("https://", ""), 443)
+            conn.request(args.request, args.path, args.data, auth_header)
+            log.info(conn.getresponse().read().decode())
+            conn.close()
+        except Exception as e:
+            log.error(e)
+            sys.exit(1)
 
 
 def get_auth_token():
