@@ -13,6 +13,8 @@ Not affiliated with https://mesosphere.github.io/marathon/.
 pip3 install --user run-marathon
 ```
 
+Also [install gcloud SDK](https://cloud.google.com/sdk/install) and [initialize it](https://cloud.google.com/sdk/docs/authorizing).
+
 ### Example:
 ```
 cd example/
