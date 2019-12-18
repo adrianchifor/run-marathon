@@ -1,7 +1,10 @@
 # Cloud Run Marathon
-Simplify and manage your serverless container deployments. Like docker-compose but for Cloud Run.
+
+Simplify and manage your serverless container deployments. Like docker-compose but for [Cloud Run](https://cloud.google.com/run/).
 
 Not affiliated with https://mesosphere.github.io/marathon/.
+
+<img src="./cloud-run.jpg" width="329">
 
 ## Quickstart
 
