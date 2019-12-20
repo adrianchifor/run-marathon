@@ -82,6 +82,12 @@ def setup_service_iam(service, project, region):
                 f" --member=serviceAccount:{service_account_email} --role={role}"
                 f" --project={project}"))
 
+    if "cloudsql-instances" in conf[service] and len(conf[service]["cloudsql-instances"]) > 0:
+        log.debug(f"Adding CloudSQL Client permission to {service} service account ...")
+        eval_noout((f"gcloud projects add-iam-policy-binding {project}"
+            f" --member=serviceAccount:{service_account_email} --role=roles/cloudsql.client"
+            f" --project={project}"))
+
     if "links" in conf[service]:
         for linked_service in conf[service]["links"]:
             log.debug(f"Allowing {service} -> {linked_service} invocation ...")
