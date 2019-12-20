@@ -104,8 +104,8 @@ service1:
     KEY: VALUE
   labels:
     KEY: VALUE
-  cloudsql-instances:
-    - your_cloudsql_instance
+  cloudsql-instances:        # roles/cloudsql.client will be auto-added to the service account
+    - instance_name
   iam_roles:                  
     - roles/compute.viewer   # these get attached to the service account of the service
   links:                      
