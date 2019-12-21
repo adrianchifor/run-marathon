@@ -48,6 +48,10 @@ def init_marathon_config():
         "service3": {
             "image": "gcr.io/${project}/service3:latest",
             "dir": "apps/service3",
+            "cron": {
+                "schedule": "0 * * * *",
+                "http-method": "get",
+            },
         },
     }
 

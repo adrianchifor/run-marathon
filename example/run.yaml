@@ -21,3 +21,6 @@ service2:
 service3:
   dir: apps/service3
   image: gcr.io/${project}/service3:latest
+  cron:
+    schedule: 0 * * * *
+    http-method: get

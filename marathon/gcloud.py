@@ -53,6 +53,9 @@ def deploy(service):
 
     eval_noout(deploy_cmd)
 
+    if "cron" in conf[service]:
+        setup_cron(service, project, region)
+
     allow_invoke(service, project, region)
 
     deployed_url = get_service_endpoint(sanitized_service, project, region)
@@ -166,6 +169,52 @@ def complete_deploy_cmd(service, project, region):
             deploy_cmd += f" --set-cloudsql-instances={cloudsql_instances}"
 
     return deploy_cmd
+
+
+def setup_cron(service, project, region):
+    conf = get_marathon_config()
+    sanitized_service = sanitize_service_name(service)
+    cron_sa_name = f"run-scheduler-invoker-sa"
+    cron_sa_email = f"{cron_sa_name}@{project}.iam.gserviceaccount.com"
+
+    cron_config = conf[service]["cron"]
+    if "schedule" not in cron_config:
+        log.error(f"No 'schedule' specified in cron config for {service} in run.yaml")
+        return
+
+    sa_list_json, _ = eval_noout(("gcloud iam service-accounts list --format=json"
+        f" --project={project} --filter=email:{cron_sa_email}"))
+    sa_list = json.loads(sa_list_json)
+    if len(sa_list) == 0:
+        log.debug(f"Creating Cloud Scheduler service account ...")
+        eval_stdout(f"gcloud iam service-accounts create {cron_sa_name} --project={project}")
+
+    log.debug(f"Allowing Cloud Scheduler -> {service} invocation ...")
+    eval_noout((f"gcloud run services add-iam-policy-binding {sanitized_service}"
+        f" --member=serviceAccount:{cron_sa_email} --role=roles/run.invoker"
+        f" --platform=managed --project={project} --region={region}"))
+
+    scheduler_cmd_type = "update"
+    scheduler_list_json, _ = eval_noout(("gcloud scheduler jobs list --format=json"
+        f" --project={project} --filter=name:{sanitized_service}-job"))
+    scheduler_list = json.loads(scheduler_list_json)
+    if len(scheduler_list) == 0:
+        scheduler_cmd_type = "create"
+
+    service_endpoint = get_service_endpoint(sanitized_service, project, region)
+    if service_endpoint:
+        if scheduler_cmd_type == "create":
+            log.info(f"Creating Cloud Scheduler job for {service} ...")
+        cron_cmd = (f"gcloud scheduler jobs {scheduler_cmd_type} http {sanitized_service}-job"
+            f" --http-method={cron_config.get('http-method', 'post')}"
+            f" --uri={service_endpoint}{cron_config.get('path', '/')}"
+            f" --oidc-service-account-email={cron_sa_email}"
+            f" --oidc-token-audience={service_endpoint}"
+            f" --project={project}").split(" ")
+        cron_cmd.append(f"--schedule={cron_config['schedule']}")
+        eval_stdout(cron_cmd, split=False)
+    else:
+        log.error(f"Failed to create/update Cloud Scheduler job for {service}, no service endpoint")
 
 
 def allow_invoke(service, project, region):
@@ -311,8 +360,9 @@ def get_service_endpoint(service, project, region):
     return url
 
 
-def eval_stdout(command):
-    command = command.split(" ")
+def eval_stdout(command, split=True):
+    if split:
+        command = command.split(" ")
     try:
         proc = subprocess.Popen(command)
         proc.communicate()
@@ -320,8 +370,9 @@ def eval_stdout(command):
         gcloud_not_installed()
 
 
-def eval_noout(command):
-    command = command.split(" ")
+def eval_noout(command, split=True):
+    if split:
+        command = command.split(" ")
     try:
         pipe = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = pipe.communicate()

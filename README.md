@@ -110,6 +110,10 @@ service1:
     - roles/compute.viewer   # these get attached to the service account of the service
   links:                      
     - service2               # allow invocation through IAM, also injects SERVICE2_URL into env
+  cron:                      # invokes your service on a schedule using a Cloud Scheduler job
+    schedule: "0 * * * *"      
+    path: /                  # default /
+    http-method: post        # default post
 
 service2:
   dir: apps/service2
@@ -121,6 +125,5 @@ service2:
 - Support domain mappings
 - Cleanup unused IAM service accounts and bindings
 - Support pubsub
-- Support cron
 
 This project is not affiliated with https://mesosphere.github.io/marathon/.
