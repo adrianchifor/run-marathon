@@ -87,12 +87,14 @@ run invoke service1 # or visit URL
 project: Google Cloud project            # required
 region: default region where we deploy   # required
 
-allow_invoke:                            # optional, users allowed to `run invoke <service>`
+# optional, users allowed to `run invoke <service>`
+allow_invoke:                            
   - user:your_user@domain.com
   - group:your_group@domain.com
 
 service1:
-  image: gcr.io/${project}/service1:latest   # required, yes you can interpolate first-level variables :)
+  # required, yes you can interpolate first-level variables :)
+  image: gcr.io/${project}/service1:latest   
   dir: apps/service1     # only needed in 'run build'
   authenticated: false   # default true, set to false to make the service public
   region: your_region    # defaults to the region specified at first-level
@@ -104,13 +106,21 @@ service1:
     KEY: VALUE
   labels:
     KEY: VALUE
-  cloudsql-instances:        # roles/cloudsql.client will be auto-added to the service account
+
+  # roles/cloudsql.client will be automatically added to the service account on deployment
+  cloudsql-instances:        
     - instance_name
+
+  # these roles will be automatically added to the service account on deployment
   iam_roles:                  
-    - roles/compute.viewer   # these get attached to the service account of the service
+    - roles/compute.viewer
+
+  # allows invocation through IAM + injects SERVICE2_URL into env
   links:                      
-    - service2               # allow invocation through IAM, also injects SERVICE2_URL into env
-  cron:                      # invokes your service on a schedule using a Cloud Scheduler job
+    - service2               
+
+  # invokes your service on a schedule using a Cloud Scheduler job
+  cron:                      
     schedule: "0 * * * *"      
     path: /                  # default /
     http-method: post        # default post
