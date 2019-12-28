@@ -5,21 +5,23 @@ Simplify and manage your serverless container deployments. Like docker-compose b
 _Note: This is currently in alpha and under heavy development and iteration. If you have ideas or feedback, please open an issue and we can discuss._
 
 #### What's Cloud Run?
-Cloud Run [is now GA](https://cloud.google.com/blog/products/serverless/knative-based-cloud-run-services-are-ga) and it allows you to run your containers in a fully managed, production-ready environment leveraging features like autoscaling (including scaling to 0), regional redundancy, integrated monitoring and logging, easy integration with CloudSQL/PubSub/Tasks/Scheduler, automatic TLS endpoints, authentication, IAM policies, and isolation based on [gvisor](https://gvisor.dev/). All of this with a very generous free tier (2mil req/month) and [pay-per-use pricing](https://cloud.google.com/run/#pricing). Sounds like a pretty sweet deal!
+Cloud Run [is now GA](https://cloud.google.com/blog/products/serverless/knative-based-cloud-run-services-are-ga) and it allows you to run your containers in a fully managed, production-ready environment leveraging features like:
+- Autoscaling (including scaling to 0)
+- Regional redundancy
+- Integrated monitoring and logging
+- Easy integration with CloudSQL/PubSub/Tasks/Scheduler
+- Automatic TLS endpoints
+- Authentication and IAM policies
+- Isolation based on [gvisor](https://gvisor.dev/)
+
+All of this with a very generous free tier (2mil req/month) and [pay-per-use pricing](https://cloud.google.com/run/#pricing). Sounds like a pretty sweet deal!
 
 #### Ok.. then what's Cloud Run Marathon?
 **Cloud Run Marathon is to Cloud Run what docker-compose is to Docker, essentially a nice wrapper to simplify, manage and automate.**
 
-If you have just one container `docker run ..` or `gcloud run deploy ..` will do the trick, but when you have more containers with configs, policies, interactions, dependencies and so on, it gets a bit more complex.
+If you have just one container `docker run ..` or `gcloud run deploy ..` will do the trick, but when you have multiple containers with configs, policies, interactions, dependencies and so on, it gets a bit more complex.
 
-#### Options and reducing friction
-The process of getting code and containers into production is still quite slow and cumbersome with a lot of friction. Sure you can just spin up a managed Kubernetes cluster and start deploying but the time/resource cost, barrier to entry and ops overhead is massive for most engineers and companies.
-
-The whole point of this tool is to reduce friction. Before this, I managed my Cloud Run deployments with gcloud CLI and Terraform, which were the only two reasonable options, but still, Terraform requires a big time investment to get right and plain gcloud CLI is a hassle to write and maintain so these are not feasible solutions for reducing friction.
-
-I have fond memories of docker-compose and it was maybe the most convenient way to manage complex container deployments before the orchestration wars began. So I thought I'd base the design of this tool on that, with some cloud native sprinkled on top.
-
-Let's `run` and get to the finish line sooner, and only then the real journey begins.
+This tool is designed to reduce the friction and cost (mainly time) of getting more complex containers/microservices into production, compared to alternatives like Kubernetes, Terraform or just plain gcloud CLI.
 
 <img src="./cloud-run.jpg" width="329">
 
