@@ -67,6 +67,7 @@ rm run.yaml && run init
 run check
 
 # Build containers with Cloud Build
+# Running "gcloud config set builds/use_kaniko True" will enable Kaniko builds and layer caching
 run build
 
 # Deploy to Cloud Run and setup IAM
