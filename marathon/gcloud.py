@@ -4,6 +4,7 @@ import sys
 import logging
 import subprocess
 import json
+import re
 import http.client as http
 
 from marathon.utils import get_marathon_config, interpolate_var, sanitize_service_name
@@ -43,9 +44,10 @@ def deploy(service):
     image = interpolate_var(conf[service]["image"])
 
     service_account = setup_service_iam(service, project, region)
-    sanitized_service = sanitize_service_name(service)
 
     log.debug(f"Deploying {service} with configuration: {conf[service]}")
+
+    sanitized_service = sanitize_service_name(service)
 
     deploy_cmd = (f"gcloud run deploy {sanitized_service} --image={image} --platform=managed"
         f" --region={region} --project={project} --service-account={service_account}")
@@ -200,7 +202,7 @@ def setup_cron(service, project, region):
         if scheduler_cmd_type == "create":
             log.info(f"Creating Cloud Scheduler job for {service} ...")
         cron_cmd = (f"gcloud scheduler jobs {scheduler_cmd_type} http {sanitized_service}-job"
-            f" --http-method={cron_config.get('http-method', 'post')}"
+            f" --http-method={cron_config.get('http-method', 'post').lower()}"
             f" --uri={service_endpoint}{cron_config.get('path', '/')}"
             f" --oidc-service-account-email={cron_sa_email}"
             f" --oidc-token-audience={service_endpoint}"
@@ -226,9 +228,13 @@ def allow_invoke(service, project, region):
 
     if "allow_invoke" in conf:
         for member in conf["allow_invoke"]:
-            log.debug(f"Allowing {member} -> {service} invocation ...")
+            if isinstance(member, dict):
+                member = json.dumps(member)
+            # Remove {, }, ", ' and all whitespace characters
+            sanitized_member = re.sub("[{}\"\'\s]", "", member)
+            log.debug(f"Allowing {sanitized_member} -> {service} invocation ...")
             eval_noout((f"gcloud run services add-iam-policy-binding {sanitized_service}"
-                f" --member={member} --role=roles/run.invoker"
+                f" --member={sanitized_member} --role=roles/run.invoker"
                 f" --platform=managed --project={project} --region={region}"))
 
 
@@ -328,7 +334,7 @@ def invoke(args):
 
         try:
             conn = http.HTTPSConnection(service_url.replace("https://", ""), 443)
-            conn.request(args.request, args.path, args.data, auth_header)
+            conn.request(args.request.upper(), args.path, args.data, auth_header)
             log.info(conn.getresponse().read().decode())
             conn.close()
         except Exception as e:
