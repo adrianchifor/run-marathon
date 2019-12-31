@@ -191,7 +191,7 @@ def run_init():
 
     user = gcloud.get_user_email()
     if user:
-        run_yaml["allow_invoke"][0] = f"user:{user.strip()}"
+        run_yaml["allow-invoke"][0] = f"user:{user.strip()}"
 
     with open("run.yaml", "w") as f:
         yaml.dump(run_yaml, stream=f)

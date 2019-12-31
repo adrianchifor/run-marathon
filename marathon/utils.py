@@ -23,7 +23,7 @@ def init_marathon_config():
     return {
         "project": "your_project",
         "region": "your_default_region",
-        "allow_invoke": [
+        "allow-invoke": [
             "user:your_user@domain.com"
         ],
 
@@ -70,7 +70,7 @@ def interpolate_var(string):
 
 def service_iter():
     for service in get_marathon_config().keys():
-        if service != "project" and service != "region" and service != "allow_invoke":
+        if service != "project" and service != "region" and service != "allow-invoke":
             yield service
 
 

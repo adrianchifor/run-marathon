@@ -77,8 +77,8 @@ def setup_service_iam(service, project, region):
         log.debug(f"Creating service account for {service} ...")
         eval_stdout(f"gcloud iam service-accounts create {service_account_name} --project={project}")
 
-    if "iam_roles" in conf[service]:
-        for role in conf[service]["iam_roles"]:
+    if "iam-roles" in conf[service]:
+        for role in conf[service]["iam-roles"]:
             log.debug(f"Adding {role} to {service} service account ...")
             eval_noout((f"gcloud projects add-iam-policy-binding {project}"
                 f" --member=serviceAccount:{service_account_email} --role={role}"
@@ -226,8 +226,8 @@ def allow_invoke(service, project, region):
     conf = get_marathon_config()
     sanitized_service = sanitize_service_name(service)
 
-    if "allow_invoke" in conf:
-        for member in conf["allow_invoke"]:
+    if "allow-invoke" in conf:
+        for member in conf["allow-invoke"]:
             if isinstance(member, dict):
                 member = json.dumps(member)
             # Remove {, }, ", ' and all whitespace characters

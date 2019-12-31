@@ -2,7 +2,7 @@
 
 Simplify and manage your serverless container deployments. Like docker-compose but for [Cloud Run](https://cloud.google.com/run/).
 
-_Note: This is currently in alpha and under heavy development and iteration. If you have ideas or feedback, please open an issue and we can discuss._
+_Note: This is currently in alpha and under heavy development. If you have ideas or feedback, please open an issue and we can discuss._
 
 #### What's Cloud Run?
 Cloud Run [is now GA](https://cloud.google.com/blog/products/serverless/knative-based-cloud-run-services-are-ga) and it allows you to run your containers in a fully managed, production-ready environment leveraging features like:
@@ -79,64 +79,127 @@ run invoke service1 # or visit URL
 
 # Request flow:
 #
-# user -----> service1 -----> service2 -----> service3
+# user -----> service1 -----> service2 -----> service3 (also has hourly cron)
 #      public          private         private   |
 #                                                |
 # "Hello from service3" <-------------------------
 ```
 
 ## Configuration (run.yaml)
+
+The configuration structure and options of the `run.yaml` file. Items not market with 'required' are optional or have a default. You can interpolate first-level variables, like the project or region, with the following notation: `${<variable name>}`, e.g. `image: gcr.io/${project}/service1:latest`.
+
+See [example/run.yaml](https://github.com/adrianchifor/run-marathon/blob/master/example/run.yaml) for a simple configuration example.
+
+##### project (required)
+Google Cloud Project
+
+##### region (required)
+Default region where you want to deploy, e.g. `europe-west1`
+
+##### allow-invoke
+The users or groups allowed to `run invoke <service>`, example:
 ```
-project: Google Cloud project            # required
-region: default region where we deploy   # required
+allow-invoke:              
+  - user:a_user@domain.com
+  - group:a_group@domain.com
+```
 
-# optional, users allowed to `run invoke <service>`
-allow_invoke:                            
-  - user:your_user@domain.com
-  - group:your_group@domain.com
+##### [service]
+A service definition and its configuration
 
-service1:
-  # required, yes you can interpolate first-level variables :)
-  image: gcr.io/${project}/service1:latest   
-  dir: apps/service1     # only needed in 'run build'
-  authenticated: false   # default true, set to false to make the service public
-  region: your_region    # defaults to the region specified at first-level
-  concurrency: 30        # default 80
-  max-instances: 1000    # default quota is 1000
-  memory: 512Mi          # default 256Mi max 2Gi
-  timeout: 30            # default 300 (5min)
-  env:              
+* **image** (required)
+<br>Container image to deploy and/or build, e.g. `gcr.io/${project}/service1:latest`
+
+* **dir** (required only for `run build`)
+<br>The directory of the service and Dockerfile to use for building the container, e.g. `apps/service1`
+
+* **authenticated**
+<br>Default `true`, set to `false` to make the service public
+
+* **region**
+<br>Defaults to the region specified at first-level
+
+* **concurrency**
+<br>Number of concurrent requests one container can receive, default `80`
+
+* **max-instances**
+<br>Maximum number of containers, default quota is `1000` (can be raised)
+
+* **memory**
+<br>Memory to allocate to each container, default `256Mi`, max `2Gi`
+
+* **timeout**
+<br>Number of seconds until a request to a container times out, default `300`
+
+* **env**
+<br>Environment variables to add to containers
+  ```
+  env:
     KEY: VALUE
+  ```
+
+* **labels**
+<br>GCP labels to add to the Cloud Run service
+  ```
   labels:
     KEY: VALUE
+  ```
 
-  # roles/cloudsql.client will be automatically added to the service account on deployment
-  cloudsql-instances:        
+* **cloudsql-instances**
+<br>List of CloudSQL instances to attach to the containers. A unix domain socket will be created per CloudSQL instance in each container at `/cloudsql/<instance_name>` for MySQL and `/cloudsql/<instance_name>/.s.PGSQL.5432` for PostgreSQL. `roles/cloudsql.client` will be automatically added to the IAM service account of the service on deployment
+  ```
+  cloudsql-instances:
     - instance_name
+  ```
 
-  # these roles will be automatically added to the service account on deployment
-  iam_roles:                  
+* **iam-roles**
+<br>IAM roles to attach to the service account of the service
+  ```
+  iam-roles:
     - roles/compute.viewer
+  ```
 
-  # allows invocation through IAM + injects SERVICE2_URL into env
-  links:                      
-    - service2               
+* **links**
+<br>Creates links to other services by allowing invocation through IAM and by injecting the service URLs into the environment variables on deployment. For the example below, `SERVICE2_URL` will be injected into `service1` env
+  ```
+  service1:
+    links:
+      - service2
+  ```
 
-  # invokes your service on a schedule using a Cloud Scheduler job
-  cron:                      
-    schedule: "0 * * * *"      
-    path: /                  # default /
-    http-method: post        # default post
+* **cron**
+<br>Creates a Cloud Scheduler job and invokes the service on the specified schedule
+  * **schedule** (required)
+  <br>Cron expression, e.g. `"0 * * * *"`
+  * **path**
+  <br>URL path for the invocation request, defaults to `/`
+  * **http-method**
+  <br>HTTP method used for the invocation request, defaults to `post`
 
-service2:
-  dir: apps/service2
-  image: gcr.io/${project}/service2:latest
-```
 
 ## TODO
 - Only deploy if container image or config changes (persist + check combo hash)
 - Support domain mappings
 - Cleanup unused IAM service accounts and bindings
-- Support pubsub
+- Document the commands in more depth
+- A more complex example
+- Allow custom variables on first-level in run.yaml
+
+## License
+
+Copyright © 2020 Adrian Chifor
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 
 This project is not affiliated with https://mesosphere.github.io/marathon/.
