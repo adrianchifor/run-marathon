@@ -91,13 +91,13 @@ The configuration structure and options of the `run.yaml` file. Items not market
 
 See [example/run.yaml](https://github.com/adrianchifor/run-marathon/blob/master/example/run.yaml) for a simple configuration example.
 
-##### project (required)
+#### project (required)
 Google Cloud Project
 
-##### region (required)
+#### region (required)
 Default region where you want to deploy, e.g. `europe-west1`
 
-##### allow-invoke
+#### allow-invoke
 The users or groups allowed to `run invoke <service>`, example:
 ```
 allow-invoke:              
@@ -105,7 +105,7 @@ allow-invoke:
   - group:a_group@domain.com
 ```
 
-##### [service]
+#### [service]
 A service definition and its configuration
 
 * **image** (required)
