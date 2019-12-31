@@ -71,10 +71,7 @@ def setup_service_iam(service, project, region):
     service_account_name = f"{sanitized_service}-sa"
     service_account_email = f"{service_account_name}@{project}.iam.gserviceaccount.com"
 
-    sa_list_json, _ = eval_noout(("gcloud iam service-accounts list --format=json"
-        f" --project={project} --filter=email:{service_account_email}"))
-    sa_list = json.loads(sa_list_json)
-    if len(sa_list) == 0:
+    if not service_account_exists(service_account_email, project):
         log.debug(f"Creating service account for {service} ...")
         eval_stdout(f"gcloud iam service-accounts create {service_account_name} --project={project}")
 
@@ -182,10 +179,7 @@ def setup_cron(service, project, region):
         log.error(f"No 'schedule' specified in cron config for {service} in run.yaml")
         return
 
-    sa_list_json, _ = eval_noout(("gcloud iam service-accounts list --format=json"
-        f" --project={project} --filter=email:{cron_sa_email}"))
-    sa_list = json.loads(sa_list_json)
-    if len(sa_list) == 0:
+    if not service_account_exists(cron_sa_email, project):
         log.debug(f"Creating Cloud Scheduler service account ...")
         eval_stdout(f"gcloud iam service-accounts create {cron_sa_name} --project={project}")
 
@@ -215,6 +209,15 @@ def setup_cron(service, project, region):
         eval_stdout(cron_cmd, split=False)
     else:
         log.error(f"Failed to create/update Cloud Scheduler job for {service}, no service endpoint")
+
+
+def service_account_exists(service_account_email, project):
+    sa_list_json, _ = eval_noout(("gcloud iam service-accounts list --format=json"
+        f" --project={project} --filter=email:{service_account_email}"))
+    sa_list = json.loads(sa_list_json)
+    if len(sa_list) == 0:
+        return False
+    return True
 
 
 def allow_invoke(service, project, region):
