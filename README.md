@@ -179,6 +179,7 @@ A service definition and its configuration
 
 
 ## TODO
+- Support PubSub
 - Only deploy if container image or config changes (persist + check combo hash)
 - Support domain mappings
 - Cleanup unused IAM service accounts and bindings
