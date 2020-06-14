@@ -2,8 +2,6 @@
 
 Simplify and manage your serverless container deployments. Like docker-compose but for [Cloud Run](https://cloud.google.com/run/).
 
-_Note: This is currently in alpha and under heavy development. If you have ideas or feedback, please open an issue and we can discuss._
-
 #### What's Cloud Run?
 Cloud Run [is now GA](https://cloud.google.com/blog/products/serverless/knative-based-cloud-run-services-are-ga) and it allows you to run your containers in a fully managed, production-ready environment leveraging features like:
 - Autoscaling (including scaling to 0)

@@ -1,8 +1,8 @@
-from flask import Flask, make_response
+from flask import Flask
 
 app = Flask(__name__)
 
 
 @app.route("/")
 def index():
-    return make_response("Hello from service3", 200)
+    return "Hello from service3", 200
