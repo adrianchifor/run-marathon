@@ -25,7 +25,7 @@ def build(service):
     conf = get_marathon_config()
     if "project" not in conf or "dir" not in conf[service] or "image" not in conf[service]:
         log.error((f"Failed to build {service}: 'project', '{service}.dir' and '{service}.image'"
-            " are required in run.yaml"))
+                   " are required in run.yaml"))
         return
 
     dir = interpolate_var(conf[service]["dir"])
@@ -36,7 +36,8 @@ def build(service):
 def deploy(service):
     conf = get_marathon_config()
     if "project" not in conf or "region" not in conf or "image" not in conf[service]:
-        log.error(f"Failed to deploy {service}: 'project', 'region' and '{service}.image' are required in run.yaml")
+        log.error(
+            f"Failed to deploy {service}: 'project', 'region' and '{service}.image' are required in run.yaml")
         return False
 
     project = conf["project"]
@@ -49,8 +50,8 @@ def deploy(service):
 
     sanitized_service = sanitize_service_name(service)
 
-    deploy_cmd = (f"gcloud run deploy {sanitized_service} --image={image} --platform=managed"
-        f" --region={region} --project={project} --service-account={service_account}")
+    deploy_cmd = (f"gcloud beta run deploy {sanitized_service} --image={image} --platform=managed"
+                  f" --region={region} --project={project} --service-account={service_account}")
     deploy_cmd += complete_deploy_cmd(service, project, region)
 
     eval_noout(deploy_cmd)
@@ -75,28 +76,29 @@ def setup_service_iam(service, project, region):
 
     if not service_account_exists(service_account_email, project):
         log.debug(f"Creating service account for {service} ...")
-        eval_stdout(f"gcloud iam service-accounts create {service_account_name} --project={project}")
+        eval_stdout(
+            f"gcloud iam service-accounts create {service_account_name} --project={project}")
 
     if "iam-roles" in conf[service]:
         for role in conf[service]["iam-roles"]:
             log.debug(f"Adding {role} to {service} service account ...")
             eval_noout((f"gcloud projects add-iam-policy-binding {project}"
-                f" --member=serviceAccount:{service_account_email} --role={role}"
-                f" --project={project}"))
+                        f" --member=serviceAccount:{service_account_email} --role={role}"
+                        f" --project={project}"))
 
     if "cloudsql-instances" in conf[service] and len(conf[service]["cloudsql-instances"]) > 0:
         log.debug(f"Adding CloudSQL Client permission to {service} service account ...")
         eval_noout((f"gcloud projects add-iam-policy-binding {project}"
-            f" --member=serviceAccount:{service_account_email} --role=roles/cloudsql.client"
-            f" --project={project}"))
+                    f" --member=serviceAccount:{service_account_email} --role=roles/cloudsql.client"
+                    f" --project={project}"))
 
     if "links" in conf[service]:
         for linked_service in conf[service]["links"]:
             log.debug(f"Allowing {service} -> {linked_service} invocation ...")
             linked_service_sanitized = sanitize_service_name(linked_service)
             eval_noout((f"gcloud run services add-iam-policy-binding {linked_service_sanitized}"
-                f" --member=serviceAccount:{service_account_email} --role=roles/run.invoker"
-                f" --platform=managed --project={project} --region={region}"))
+                        f" --member=serviceAccount:{service_account_email} --role=roles/run.invoker"
+                        f" --platform=managed --project={project} --region={region}"))
 
     return service_account_email
 
@@ -119,11 +121,33 @@ def complete_deploy_cmd(service, project, region):
     if "max-instances" in conf[service]:
         deploy_cmd += f" --max-instances={interpolate_var(conf[service]['max-instances'])}"
 
+    if "cpu" in conf[service]:
+        deploy_cmd += f" --cpu={interpolate_var(conf[service]['cpu'])}"
+
     if "memory" in conf[service]:
         deploy_cmd += f" --memory={interpolate_var(conf[service]['memory'])}"
 
     if "timeout" in conf[service]:
         deploy_cmd += f" --timeout={interpolate_var(conf[service]['timeout'])}"
+
+    if "port" in conf[service]:
+        deploy_cmd += f" --port={interpolate_var(conf[service]['port'])}"
+
+    if "command" in conf[service]:
+        deploy_cmd += f" --command={interpolate_var(conf[service]['command'])}"
+
+    if "args" in conf[service] and len(conf[service]["args"]) > 0:
+        args = ""
+        for arg in conf[service]["args"]:
+            args += f"{interpolate_var(arg)},"
+        # Remove trailing comma
+        if args.endswith(","):
+            args = args[:-1]
+        if len(args) > 0:
+            deploy_cmd += f" --args={args}"
+
+    if "vpc-connector" in conf[service]:
+        deploy_cmd += f" --vpc-connector={interpolate_var(conf[service]['vpc-connector'])}"
 
     envs = ""
     if "env" in conf[service] and len(conf[service]["env"]) > 0:
@@ -187,12 +211,12 @@ def setup_cron(service, project, region):
 
     log.debug(f"Allowing Cloud Scheduler -> {service} invocation ...")
     eval_noout((f"gcloud run services add-iam-policy-binding {sanitized_service}"
-        f" --member=serviceAccount:{cron_sa_email} --role=roles/run.invoker"
-        f" --platform=managed --project={project} --region={region}"))
+                f" --member=serviceAccount:{cron_sa_email} --role=roles/run.invoker"
+                f" --platform=managed --project={project} --region={region}"))
 
     scheduler_cmd_type = "update"
     scheduler_list_json, _ = eval_noout(("gcloud scheduler jobs list --format=json"
-        f" --project={project} --filter=name:{sanitized_service}-job"))
+                                         f" --project={project} --filter=name:{sanitized_service}-job"))
     scheduler_list = json.loads(scheduler_list_json)
     if len(scheduler_list) == 0:
         scheduler_cmd_type = "create"
@@ -202,11 +226,11 @@ def setup_cron(service, project, region):
         if scheduler_cmd_type == "create":
             log.info(f"Creating Cloud Scheduler job for {service} ...")
         cron_cmd = (f"gcloud scheduler jobs {scheduler_cmd_type} http {sanitized_service}-job"
-            f" --http-method={cron_config.get('http-method', 'post').lower()}"
-            f" --uri={service_endpoint}{cron_config.get('path', '/')}"
-            f" --oidc-service-account-email={cron_sa_email}"
-            f" --oidc-token-audience={service_endpoint}"
-            f" --project={project}").split(" ")
+                    f" --http-method={cron_config.get('http-method', 'post').lower()}"
+                    f" --uri={service_endpoint}{cron_config.get('path', '/')}"
+                    f" --oidc-service-account-email={cron_sa_email}"
+                    f" --oidc-token-audience={service_endpoint}"
+                    f" --project={project}").split(" ")
         cron_cmd.append(f"--schedule={cron_config['schedule']}")
         eval_stdout(cron_cmd, split=False)
     else:
@@ -215,7 +239,7 @@ def setup_cron(service, project, region):
 
 def service_account_exists(service_account_email, project):
     sa_list_json, _ = eval_noout(("gcloud iam service-accounts list --format=json"
-        f" --project={project} --filter=email:{service_account_email}"))
+                                  f" --project={project} --filter=email:{service_account_email}"))
     sa_list = json.loads(sa_list_json)
     if len(sa_list) == 0:
         return False
@@ -234,8 +258,8 @@ def allow_invoke(service, project, region):
             sanitized_member = re.sub("[{}\"\'\s]", "", member)
             log.debug(f"Allowing {sanitized_member} -> {service} invocation ...")
             eval_noout((f"gcloud run services add-iam-policy-binding {sanitized_service}"
-                f" --member={sanitized_member} --role=roles/run.invoker"
-                f" --platform=managed --project={project} --region={region}"))
+                        f" --member={sanitized_member} --role=roles/run.invoker"
+                        f" --platform=managed --project={project} --region={region}"))
 
 
 def check():
@@ -248,29 +272,29 @@ def check():
         log.debug("Could not get project from run.yaml, using gcloud default")
 
     result_json, _ = eval_noout(cmd)
-    enabled_svc = [ svc["config"]["name"] for svc in json.loads(result_json) ]
+    enabled_svc = [svc["config"]["name"] for svc in json.loads(result_json)]
 
     all_enabled = True
     if "run.googleapis.com" not in enabled_svc:
         all_enabled = False
         log.info(("Cloud Run API is not enabled. Enable it"
-            f" at: https://console.cloud.google.com/apis/library/run.googleapis.com?project={project}"))
+                  f" at: https://console.cloud.google.com/apis/library/run.googleapis.com?project={project}"))
     if "cloudbuild.googleapis.com" not in enabled_svc:
         all_enabled = False
         log.info(("Cloud Build API is not enabled. If you want to use 'run build' enable it"
-            f" at: https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project={project}"))
+                  f" at: https://console.cloud.google.com/apis/library/cloudbuild.googleapis.com?project={project}"))
     if "containerregistry.googleapis.com" not in enabled_svc:
         all_enabled = False
         log.info(("Cloud Container Registry API is not enabled. If you want to use 'run build' enable it"
-            f" at: https://console.cloud.google.com/apis/library/containerregistry.googleapis.com?project={project}"))
+                  f" at: https://console.cloud.google.com/apis/library/containerregistry.googleapis.com?project={project}"))
     if "pubsub.googleapis.com" not in enabled_svc:
         all_enabled = False
         log.info(("Cloud PubSub API is not enabled. If you use PubSub in your services enable it"
-            f" at: https://console.cloud.google.com/apis/library/pubsub.googleapis.com?project={project}"))
+                  f" at: https://console.cloud.google.com/apis/library/pubsub.googleapis.com?project={project}"))
     if "cloudscheduler.googleapis.com" not in enabled_svc:
         all_enabled = False
         log.info(("Cloud Scheduler API is not enabled. If you trigger services on a cron schedule enable it"
-            f" at: https://console.cloud.google.com/apis/library/cloudscheduler.googleapis.com?project={project}"))
+                  f" at: https://console.cloud.google.com/apis/library/cloudscheduler.googleapis.com?project={project}"))
 
     if all_enabled:
         log.info("Cloud Run, Build, Container Registry, PubSub and Scheduler APIs are enabled. All good!")
@@ -291,18 +315,18 @@ def describe(service, region):
             region = get_marathon_config()["region"]
         except Exception:
             log.error(("Specify a region, either in run.yaml or in "
-                "'run describe <service> --region=<region>'"))
+                       "'run describe <service> --region=<region>'"))
             sys.exit(1)
 
     sanitized_service = sanitize_service_name(service)
     try:
         project = get_marathon_config()["project"]
         eval_stdout((f"gcloud run services describe {sanitized_service}"
-            f" --platform=managed --region={region} --project={project}"))
+                     f" --platform=managed --region={region} --project={project}"))
     except Exception:
         log.debug("Could not get project from run.yaml, using gcloud default")
         eval_stdout(f"gcloud run services describe {sanitized_service}"
-            f" --platform=managed --region={region}")
+                    f" --platform=managed --region={region}")
 
 
 def invoke(args):
@@ -312,7 +336,7 @@ def invoke(args):
             region = get_marathon_config()["region"]
         except Exception:
             log.error(("Specify a region, either in run.yaml or in "
-                "'run invoke <service> --region=<region>'"))
+                       "'run invoke <service> --region=<region>'"))
             sys.exit(1)
 
     sanitized_service = sanitize_service_name(args.service)
@@ -325,12 +349,12 @@ def invoke(args):
     token = get_auth_token()
     if not token:
         log.error(("Could not get gcloud identity token. Make sure gcloud is correctly"
-            " setup and authorized (https://cloud.google.com/sdk/docs/authorizing)"))
+                   " setup and authorized (https://cloud.google.com/sdk/docs/authorizing)"))
         sys.exit(1)
 
     service_url = get_service_endpoint(sanitized_service, project, region)
     if service_url:
-        auth_header = { "Authorization": f"Bearer {token.strip()}" }
+        auth_header = {"Authorization": f"Bearer {token.strip()}"}
 
         try:
             conn = http.HTTPSConnection(service_url.replace("https://", ""), 443)
@@ -355,11 +379,11 @@ def get_service_endpoint(service, project, region):
     url = None
     if project:
         service_json, _ = eval_noout((f"gcloud run services describe {service} --platform=managed"
-            f" --format=json --region={region} --project={project}"))
+                                      f" --format=json --region={region} --project={project}"))
     else:
         log.debug("get_service_endpoint: No project provided, using gcloud default")
         service_json, _ = eval_noout((f"gcloud run services describe {service} --platform=managed"
-            f" --format=json --region={region}"))
+                                      f" --format=json --region={region}"))
     try:
         url = json.loads(service_json)["status"]["address"]["url"]
     except Exception as e:

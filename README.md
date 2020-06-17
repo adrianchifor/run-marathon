@@ -124,11 +124,28 @@ A service definition and its configuration
 * **max-instances**
 <br>Maximum number of containers, default quota is `1000` (can be raised)
 
+* **cpu**
+<br>CPUs to allocate to each container, default `1`, can also be `2`
+
 * **memory**
 <br>Memory to allocate to each container, default `256Mi`, max `2Gi`
 
 * **timeout**
 <br>Number of seconds until a request to a container times out, default `300`
+
+* **port**
+<br>Container port, also overrides the PORT env var, default `8080`
+
+* **command**
+<br>Overrides the entrypoint of the container
+
+* **args**
+<br>Arguments to pass to the container command
+  ```
+  args:
+    - --flag1
+    - --flag2
+  ```
 
 * **env**
 <br>Environment variables to add to containers
@@ -136,6 +153,9 @@ A service definition and its configuration
   env:
     KEY: VALUE
   ```
+
+* **vpc-connector**
+<br>VPC Connector for the Cloud Run service
 
 * **labels**
 <br>GCP labels to add to the Cloud Run service
