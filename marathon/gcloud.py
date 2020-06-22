@@ -217,7 +217,7 @@ def setup_cron(service, project, region):
 
     scheduler_cmd_type = "update"
     scheduler_list_json, _ = eval_noout(("gcloud scheduler jobs list --format=json"
-                                         f" --project={project} --filter=name:{sanitized_service}-job"))
+                                         f" --project={project} --filter=name:/jobs/{sanitized_service}-job"))
     scheduler_list = json.loads(scheduler_list_json)
     if len(scheduler_list) == 0:
         scheduler_cmd_type = "create"
