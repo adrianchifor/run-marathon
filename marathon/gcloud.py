@@ -54,6 +54,7 @@ def deploy(service):
                   f" --region={region} --project={project} --service-account={service_account}")
     deploy_cmd += complete_deploy_cmd(service, project, region)
 
+    log.debug(deploy_cmd)
     eval_noout(deploy_cmd)
 
     if "cron" in conf[service]:
